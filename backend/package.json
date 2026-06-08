@@ -1,0 +1,19 @@
+{
+  "name": "express-backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "author": "Reza Fauzan",
+  "type": "module",
+  "main": "/src/main.js",
+  "scripts": {
+    "dev": "node --watch --env-file=.env src/main.js",
+    "start": "node src/main.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "swagger-express": "^1.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
