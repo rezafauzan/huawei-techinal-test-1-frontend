@@ -77,29 +77,66 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Express REST API Client</p>
-          <h1>User CRUD Dashboard</h1>
-          <p>Manage users from the backend API running on port 8888.</p>
+    <main className="dashboard-shell">
+      <aside className="sidebar">
+        <div className="brand-row">
+          <div className="brand-mark">U</div>
+          <div>
+            <p className="eyebrow">Huawei Test</p>
+            <h2>User Admin</h2>
+          </div>
         </div>
-        <button className="secondary" type="button" onClick={loadUsers} disabled={loading || saving}>
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <nav className="side-nav" aria-label="Dashboard navigation">
+          <span className="active">Overview</span>
+          <span>Directory</span>
+          <span>Settings</span>
+        </nav>
+        <div className="api-card">
+          <span>API Status</span>
+          <strong>{loading || saving ? 'Syncing' : 'Connected'}</strong>
+          <small>localhost:8888</small>
+        </div>
+      </aside>
+
+      <section className="app-shell">
+        <section className="hero">
+          <div>
+            <p className="eyebrow">Express REST API Client</p>
+            <h1>User CRUD Dashboard</h1>
+            <p>Manage users from the backend API running on port 8888.</p>
+          </div>
+          <button className="secondary" type="button" onClick={loadUsers} disabled={loading || saving}>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </section>
+
+        <div className="stats-grid">
+          <article className="stat-card">
+            <span>Total users</span>
+            <strong>{users.length}</strong>
+          </article>
+          <article className="stat-card accent">
+            <span>API base</span>
+            <strong>8888</strong>
+          </article>
+          <article className="stat-card">
+            <span>Status</span>
+            <strong>{loading || saving ? 'Syncing' : 'Ready'}</strong>
+          </article>
+        </div>
+
+        {message && <div className={`alert ${message.type}`}>{message.text}</div>}
+
+        <div className="content-grid">
+          <UserForm
+            selectedUser={selectedUser}
+            loading={saving}
+            onCancel={() => setSelectedUser(null)}
+            onSubmit={handleSubmit}
+          />
+          <UserTable users={users} loading={loading} onEdit={setSelectedUser} onDelete={handleDelete} />
+        </div>
       </section>
-
-      {message && <div className={`alert ${message.type}`}>{message.text}</div>}
-
-      <div className="content-grid">
-        <UserForm
-          selectedUser={selectedUser}
-          loading={saving}
-          onCancel={() => setSelectedUser(null)}
-          onSubmit={handleSubmit}
-        />
-        <UserTable users={users} loading={loading} onEdit={setSelectedUser} onDelete={handleDelete} />
-      </div>
     </main>
   )
 }
