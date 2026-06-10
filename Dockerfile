@@ -1,12 +1,16 @@
-FROM node:24-alpine
+FROM node:24.13.0-alpine AS builder
 
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
+WORKDIR /workspace
+COPY package*.json .
+RUN npm install
 COPY . .
+RUN npm run build
 
-EXPOSE 3000
+FROM nginx:1.28.2-alpine
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+# WORKDIR /usr/share/nginx/html
+
+COPY --from=builder /workspace/dist /usr/share/nginx/html
+
+RUN rm /etc/nginx/conf.d/default.conf
+COPY ./default.conf /etc/nginx/conf.d/default.conf
