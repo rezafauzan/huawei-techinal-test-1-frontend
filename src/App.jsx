@@ -16,6 +16,8 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [pendingSubmit, setPendingSubmit] = useState(null)
 
   async function loadUsers() {
     setLoading(true)
@@ -35,19 +37,31 @@ export default function App() {
     loadUsers()
   }, [])
 
-  async function handleSubmit(formData) {
+  function handleSubmit(formData) {
+    setPendingSubmit({
+      mode: selectedUser ? 'update' : 'create',
+      data: formData,
+      user: selectedUser
+    })
+  }
+
+  async function confirmSubmit() {
+    if (!pendingSubmit) return
+
     setSaving(true)
     setMessage(null)
 
     try {
-      if (selectedUser) {
-        const payload = await updateUser(selectedUser.id, formData)
-        setUsers((current) => current.map((user) => (user.id === selectedUser.id ? payload.result : user)))
+      if (pendingSubmit.mode === 'update') {
+        const payload = await updateUser(pendingSubmit.user.id, pendingSubmit.data)
+        setUsers((current) => current.map((user) => (user.id === pendingSubmit.user.id ? payload.result : user)))
         setSelectedUser(null)
+        setPendingSubmit(null)
         setMessage({ type: 'success', text: payload.message || 'User updated successfully' })
       } else {
-        const payload = await createUser(formData)
+        const payload = await createUser(pendingSubmit.data)
         setUsers((current) => [...current, payload.result])
+        setPendingSubmit(null)
         setMessage({ type: 'success', text: payload.message || 'User created successfully' })
       }
     } catch (error) {
@@ -57,17 +71,21 @@ export default function App() {
     }
   }
 
-  async function handleDelete(user) {
-    const confirmed = window.confirm(`Delete ${user.first_name} ${user.last_name}?`)
-    if (!confirmed) return
+  function handleDelete(user) {
+    setPendingDelete(user)
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return
 
     setSaving(true)
     setMessage(null)
 
     try {
-      const payload = await deleteUser(user.id)
-      setUsers((current) => current.filter((item) => item.id !== user.id))
-      if (selectedUser?.id === user.id) setSelectedUser(null)
+      const payload = await deleteUser(pendingDelete.id)
+      setUsers((current) => current.filter((item) => item.id !== pendingDelete.id))
+      if (selectedUser?.id === pendingDelete.id) setSelectedUser(null)
+      setPendingDelete(null)
       setMessage({ type: 'success', text: payload.message || 'User deleted successfully' })
     } catch (error) {
       setMessage({ type: 'error', text: error.message })
@@ -89,8 +107,6 @@ export default function App() {
 
         <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:col-span-2 lg:col-span-1 lg:mt-4 lg:grid lg:content-start lg:overflow-visible lg:p-0" aria-label="Dashboard navigation">
           <span className="relative shrink-0 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 font-extrabold text-white lg:before:absolute lg:before:left-0 lg:before:top-1/2 lg:before:h-5 lg:before:w-1 lg:before:-translate-x-1/2 lg:before:-translate-y-1/2 lg:before:rounded-full lg:before:bg-cyan-300">Overview</span>
-          <span className="shrink-0 rounded-2xl border border-transparent px-4 py-3 font-extrabold text-slate-400 transition hover:border-white/10 hover:bg-white/10 hover:text-white">Directory</span>
-          <span className="shrink-0 rounded-2xl border border-transparent px-4 py-3 font-extrabold text-slate-400 transition hover:border-white/10 hover:bg-white/10 hover:text-white">Settings</span>
         </nav>
 
         <div className="hidden min-w-[180px] rounded-[22px] border border-white/10 bg-gradient-to-br from-cyan-400/15 to-violet-600/15 p-4 sm:block sm:col-start-2 sm:row-start-1 lg:col-start-auto lg:row-start-auto">
@@ -127,12 +143,6 @@ export default function App() {
           </article>
         </div>
 
-        {message && (
-          <div className={`mb-4 rounded-2xl border p-4 font-extrabold ${message.type === 'success' ? 'border-emerald-400/20 bg-emerald-500/15 text-emerald-200' : 'border-red-400/20 bg-red-400/15 text-red-200'}`}>
-            {message.text}
-          </div>
-        )}
-
         <div className="grid items-start gap-4 xl:grid-cols-[430px_minmax(0,1fr)]">
           <UserForm
             selectedUser={selectedUser}
@@ -143,6 +153,83 @@ export default function App() {
           <UserTable users={users} loading={loading} onEdit={setSelectedUser} onDelete={handleDelete} />
         </div>
       </section>
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#0f142a] p-6 shadow-2xl shadow-black/40">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-400/15 text-2xl font-black text-red-200">
+              !
+            </div>
+            <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.08em] text-red-300">Delete confirmation</p>
+            <h2 id="delete-modal-title" className="text-2xl font-black text-white">Delete this user?</h2>
+            <p className="mt-3 text-slate-400">
+              User <span className="font-bold text-white">{pendingDelete.first_name} {pendingDelete.last_name}</span> will be removed from the directory. This action cannot be undone.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button className="rounded-full border border-white/15 bg-white/10 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => setPendingDelete(null)} disabled={saving}>
+                Cancel
+              </button>
+              <button className="rounded-full border border-red-300/20 bg-red-500 px-5 py-3 font-bold text-white shadow-lg shadow-red-500/25 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={confirmDelete} disabled={saving}>
+                {saving ? 'Deleting...' : 'Delete user'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingSubmit && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title">
+          <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#0f142a] p-6 shadow-2xl shadow-black/40">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/15 text-2xl font-black text-cyan-200">
+              ?
+            </div>
+            <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.08em] text-cyan-300">
+              {pendingSubmit.mode === 'update' ? 'Update confirmation' : 'Create confirmation'}
+            </p>
+            <h2 id="submit-modal-title" className="text-2xl font-black text-white">
+              {pendingSubmit.mode === 'update' ? 'Update this user?' : 'Create this user?'}
+            </h2>
+            <p className="mt-3 text-slate-400">
+              {pendingSubmit.mode === 'update' ? 'Changes for' : 'New user'} <span className="font-bold text-white">{pendingSubmit.data.first_name} {pendingSubmit.data.last_name}</span> will be saved to the backend API.
+            </p>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-[#050816]/50 p-4 text-sm text-slate-300">
+              <div className="font-bold text-white">{pendingSubmit.data.email}</div>
+              <div>{pendingSubmit.data.phone}</div>
+              <div className="mt-1 text-slate-400">{pendingSubmit.data.address}</div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button className="rounded-full border border-white/15 bg-white/10 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={() => setPendingSubmit(null)} disabled={saving}>
+                Cancel
+              </button>
+              <button className="rounded-full bg-gradient-to-br from-[#5b7cfa] to-[#8d5cf6] px-5 py-3 font-bold text-white shadow-lg shadow-indigo-500/30 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60" type="button" onClick={confirmSubmit} disabled={saving}>
+                {saving ? 'Saving...' : pendingSubmit.mode === 'update' ? 'Save changes' : 'Create user'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {message && !pendingDelete && !pendingSubmit && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+          <div className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#0f142a] p-6 shadow-2xl shadow-black/40">
+            <div className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl font-black ${message.type === 'success' ? 'border-emerald-300/20 bg-emerald-400/15 text-emerald-200' : 'border-red-300/20 bg-red-400/15 text-red-200'}`}>
+              {message.type === 'success' ? '✓' : '!'}
+            </div>
+            <p className={`mb-1 text-xs font-extrabold uppercase tracking-[0.08em] ${message.type === 'success' ? 'text-emerald-300' : 'text-red-300'}`}>
+              {message.type === 'success' ? 'Success' : 'Failed'}
+            </p>
+            <h2 id="feedback-modal-title" className="text-2xl font-black text-white">
+              {message.type === 'success' ? 'Action completed' : 'Something went wrong'}
+            </h2>
+            <p className="mt-3 text-slate-400">{message.text}</p>
+            <div className="mt-6 flex justify-end">
+              <button className="rounded-full bg-gradient-to-br from-[#5b7cfa] to-[#8d5cf6] px-5 py-3 font-bold text-white shadow-lg shadow-indigo-500/30 transition hover:-translate-y-0.5" type="button" onClick={() => setMessage(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
