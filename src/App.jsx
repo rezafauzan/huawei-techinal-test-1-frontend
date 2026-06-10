@@ -88,8 +88,6 @@ export default function App() {
         </div>
         <nav className="side-nav" aria-label="Dashboard navigation">
           <span className="active">Overview</span>
-          <span>Directory</span>
-          <span>Settings</span>
         </nav>
         <div className="api-card">
           <span>API Status</span>
